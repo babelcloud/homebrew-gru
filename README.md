@@ -19,7 +19,7 @@ brew install gbox
 
 ## Available Tools
 
-- `gbox`: A self-hostable sandbox for MCP and AI agents
+- `gbox`: [A self-hostable sandbox for MCP and AI agents](https://github.com/babelcloud/gru-sandbox)
 
 More tools will be added to this collection in the future.
 
