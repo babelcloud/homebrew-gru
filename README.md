@@ -29,7 +29,7 @@ To update a specific formula to the latest version:
 
 ```bash
 # Upgrade the formula
-brew upgrade gbox
+brew update && brew upgrade gbox
 ```
 
 ## License
