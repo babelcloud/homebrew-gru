@@ -14,6 +14,7 @@ class Gbox < Formula
   depends_on "kind"
   depends_on "yq"
   depends_on "jq"
+  depends_on "node"
 
   def install
     # Install all contents to the Cellar directory
