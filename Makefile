@@ -19,7 +19,7 @@ update-gbox: check-version ## Update gbox.rb formula to specified version (usage
 	@# Update version and sha256 in gbox.rb
 	@SHA256=$$($(SHA256_CMD)); \
 	sed -i '' \
-		-e 's/version = ".*"/version = "$(VERSION)"/' \
+		-e 's/version ".*"/version "$(VERSION)"/' \
 		-e 's/sha256 ".*"/sha256 "'$$SHA256'"/' \
 		gbox.rb
 	
