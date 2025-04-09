@@ -19,11 +19,27 @@ update-gbox: check-version ## Update gbox.rb formula to specified version (usage
 	@# Update version and sha256 in gbox.rb
 	@SHA256=$$($(SHA256_CMD)); \
 	sed -i '' \
-		-e 's/version ".*"/version "$(VERSION)"/' \
-		-e 's/sha256 ".*"/sha256 "'$$SHA256'"/' \
+		-e 's/GBOX_VERSION = ".*"/GBOX_VERSION = "$(VERSION)"/' \
+		-e 's/DARWIN_ARM64_SHA256 = ".*"/DARWIN_ARM64_SHA256 = "'$$SHA256'"/' \
+		-e 's/DARWIN_AMD64_SHA256 = ".*"/DARWIN_AMD64_SHA256 = "'$$SHA256'"/' \
+		-e 's/LINUX_ARM64_SHA256  = ".*"/LINUX_ARM64_SHA256  = "'$$SHA256'"/' \
+		-e 's/LINUX_AMD64_SHA256  = ".*"/LINUX_AMD64_SHA256  = "'$$SHA256'"/' \
 		gbox.rb
 	
 	@echo "Formula updated successfully!"
+
+test-gbox: check-version ## Test gbox formula locally with specified version (usage: make test-gbox VERSION=x.x.x)
+	@echo "Testing gbox.rb with version $(VERSION)"
+	@# Detect system architecture
+	@ARCH=$$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/'); \
+	OS=$$(uname -s | tr '[:upper:]' '[:lower:]'); \
+	TAR_PATH="$$(pwd)/../gru-sandbox/dist/gbox-$$OS-$$ARCH-$(VERSION).tar.gz"; \
+	echo "Using local tar: $$TAR_PATH"; \
+	if [ ! -f "$$TAR_PATH" ]; then \
+		echo "Error: $$TAR_PATH does not exist"; \
+		exit 1; \
+	fi; \
+	env HOMEBREW_GBOX_VERSION=$(VERSION) HOMEBREW_GBOX_URL="file://$$TAR_PATH" brew reinstall --build-from-source ./gbox.rb
 
 check-version:
 ifndef VERSION
