@@ -2,9 +2,13 @@
 
 REPO := babelcloud/gru-sandbox
 RELEASE_URL := https://github.com/$(REPO)/releases/download/v$(VERSION)
-SHA256_CMD := curl -sfL $(RELEASE_URL)/gbox-$(VERSION).tar.gz.sha256 2>/dev/null | tr -s ' ' | cut -d ' ' -f 1 || \
-	(echo "SHA256 file not found, calculating from tar.gz..." >&2 && \
-	curl -sL $(RELEASE_URL)/gbox-$(VERSION).tar.gz | shasum -a 256 | cut -d ' ' -f 1)
+
+# build sha256 for each platform
+define get_sha256
+	curl -sfL $(RELEASE_URL)/gbox-$(1)-$(2)-$(VERSION).tar.gz.sha256 2>/dev/null | tr -s ' ' | cut -d ' ' -f 1 || \
+	(echo "SHA256 file not found for $(1)-$(2), calculating from tar.gz..." >&2 && \
+	curl -sL $(RELEASE_URL)/gbox-$(1)-$(2)-$(VERSION).tar.gz | shasum -a 256 | cut -d ' ' -f 1)
+endef
 
 .DEFAULT_GOAL := help
 
@@ -17,13 +21,16 @@ update-gbox: check-version ## Update gbox.rb formula to specified version (usage
 	@gh release view v$(VERSION) --repo $(REPO) > /dev/null || (echo "Release v$(VERSION) not found"; exit 1)
 	
 	@# Update version and sha256 in gbox.rb
-	@SHA256=$$($(SHA256_CMD)); \
+	@DARWIN_ARM64_SHA256=$$($(call get_sha256,darwin,arm64)); \
+	DARWIN_AMD64_SHA256=$$($(call get_sha256,darwin,amd64)); \
+	LINUX_ARM64_SHA256=$$($(call get_sha256,linux,arm64)); \
+	LINUX_AMD64_SHA256=$$($(call get_sha256,linux,amd64)); \
 	sed -i '' \
 		-e 's/GBOX_VERSION = ".*"/GBOX_VERSION = "$(VERSION)"/' \
-		-e 's/DARWIN_ARM64_SHA256 = ".*"/DARWIN_ARM64_SHA256 = "'$$SHA256'"/' \
-		-e 's/DARWIN_AMD64_SHA256 = ".*"/DARWIN_AMD64_SHA256 = "'$$SHA256'"/' \
-		-e 's/LINUX_ARM64_SHA256  = ".*"/LINUX_ARM64_SHA256  = "'$$SHA256'"/' \
-		-e 's/LINUX_AMD64_SHA256  = ".*"/LINUX_AMD64_SHA256  = "'$$SHA256'"/' \
+		-e 's/DARWIN_ARM64_SHA256 = ".*"/DARWIN_ARM64_SHA256 = "'$$DARWIN_ARM64_SHA256'"/' \
+		-e 's/DARWIN_AMD64_SHA256 = ".*"/DARWIN_AMD64_SHA256 = "'$$DARWIN_AMD64_SHA256'"/' \
+		-e 's/LINUX_ARM64_SHA256  = ".*"/LINUX_ARM64_SHA256  = "'$$LINUX_ARM64_SHA256'"/' \
+		-e 's/LINUX_AMD64_SHA256  = ".*"/LINUX_AMD64_SHA256  = "'$$LINUX_AMD64_SHA256'"/' \
 		gbox.rb
 	
 	@echo "Formula updated successfully!"
