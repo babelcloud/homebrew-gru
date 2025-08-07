@@ -2,12 +2,14 @@
 # frozen_string_literal: true
 
 # Gbox is a self-hostable sandbox for MCP and AI agents
+# Note: This formula requires android-platform-tools cask to be installed.
+# Install it with: brew install --cask android-platform-tools
 class Gbox < Formula
   desc "Self-hostable sandbox for MCP and AI agents"
   homepage "https://github.com/babelcloud/gru-sandbox"
 
   # Version definition
-  GBOX_VERSION = "0.0.16"
+  GBOX_VERSION = "0.0.17"
   version ENV["HOMEBREW_GBOX_VERSION"] || GBOX_VERSION
 
   # Base URL for downloads
@@ -15,10 +17,10 @@ class Gbox < Formula
   url ENV["HOMEBREW_GBOX_URL"] || "#{base_url}/gbox-#{OS.mac? ? "darwin" : "linux"}-#{Hardware::CPU.arm? ? "arm64" : "amd64"}-#{version}.tar.gz"
 
   # SHA256 definitions for different architectures
-  DARWIN_ARM64_SHA256 = "48431bc77952a560b98102400569b706f86099e8fcadc911a8ac17c5423d14b2"
-  DARWIN_AMD64_SHA256 = "fba081bd006174011bb5f94e4edd027ee0a45a4abbc5477ec068cd1d64425022"
-  LINUX_ARM64_SHA256  = "d3912a0e33a1acbf5eb03cb4ae00e668c7c7e8ec0921abc8c6a488cfc104a3da"
-  LINUX_AMD64_SHA256  = "adec5d08a9eef48e38a3c29f25792171d3659bba911b8c6ea72568bbac39880a"
+  DARWIN_ARM64_SHA256 = "a1e0242bc8f04207d8a5d8346a240c65aef857926e396b7f7e9313abe1477fb9"
+  DARWIN_AMD64_SHA256 = "ede4df10c65d77fe7158f69d0c67078ef6a69c874f7617f59e5f50c9f0b221a5"
+  LINUX_ARM64_SHA256  = "4f1037d57f2a6459c055b82603b40abe2e55b48e26fb01f1ae7165fc32532c4e"
+  LINUX_AMD64_SHA256  = "e792100764d61b9159bf4a1431e85e78ae717fa7fd84a49cc598ac38bbc2d493"
 
   def self.get_sha256(url)
     return default_sha256 unless ENV["HOMEBREW_GBOX_URL"]
@@ -59,9 +61,24 @@ class Gbox < Formula
   depends_on "yq"
   depends_on "jq"
   depends_on "node"
+  depends_on "frpc"
+
+  def cask_installed?(cask_name)
+    # Check if cask is installed by running brew list and checking exit code
+    result = system("brew", "list", "--cask", cask_name)
+    return result
+  end
 
   def install
     prefix.install Dir["*"]
+  end
+
+  def caveats
+    <<~EOS
+      This formula requires android-platform-tools cask to be installed.
+      If you haven't installed it yet, run:
+        brew install --cask android-platform-tools
+    EOS
   end
 
   test do
