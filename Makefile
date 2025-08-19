@@ -1,6 +1,6 @@
 .PHONY: help update-gbox
 
-REPO := babelcloud/gru-sandbox
+REPO := babelcloud/gbox
 RELEASE_URL := https://github.com/$(REPO)/releases/download/v$(VERSION)
 
 # build sha256 for each platform
@@ -40,7 +40,7 @@ test-gbox: check-version ## Test gbox formula locally with specified version (us
 	@# Detect system architecture
 	@ARCH=$$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/'); \
 	OS=$$(uname -s | tr '[:upper:]' '[:lower:]'); \
-	TAR_PATH="$$(pwd)/../gru-sandbox/dist/gbox-$$OS-$$ARCH-$(VERSION).tar.gz"; \
+	TAR_PATH="$$(pwd)/../gbox/dist/gbox-$$OS-$$ARCH-$(VERSION).tar.gz"; \
 	echo "Using local tar: $$TAR_PATH"; \
 	if [ ! -f "$$TAR_PATH" ]; then \
 		echo "Error: $$TAR_PATH does not exist"; \
