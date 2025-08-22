@@ -1,4 +1,4 @@
-.PHONY: help update-gbox test-gbox clean-tap
+.PHONY: help update-gbox test-gbox
 
 REPO := babelcloud/gbox
 RELEASE_URL := https://github.com/$(REPO)/releases/download/v$(VERSION)
@@ -47,31 +47,19 @@ test-gbox: check-version ## Test gbox formula locally with specified version (us
 		exit 1; \
 	fi; \
 	echo "Creating local tap directory for testing..."; \
-	TAP_NAME="ym/local-gbox"; \
+	TAP_NAME="gru/local-gbox"; \
 	TAP_DIR="$$(pwd)/../local-gbox"; \
 	brew untap "$$TAP_NAME" 2>/dev/null || true; \
 	rm -rf "$$TAP_DIR" 2>/dev/null || true; \
 	brew tap-new "$$TAP_NAME"; \
-	mkdir -p "$$TAP_DIR"; \
 	echo "Local Tap directory: $$TAP_DIR"; \
-	cp gbox.rb "/opt/homebrew/Library/Taps/ym/homebrew-local-gbox/Formula/"; \
+	cp gbox.rb "/opt/homebrew/Library/Taps/gru/homebrew-local-gbox/Formula/"; \
 	echo "Formula copied to tap directory"; \
 	echo "Adding local tap..."; \
 	echo "Uninstalling existing gbox if present..."; \
 	brew uninstall gbox 2>/dev/null || true; \
 	echo "Installing gbox from local tap..."; \
 	env HOMEBREW_GBOX_VERSION=$(VERSION) HOMEBREW_GBOX_URL="file://$$TAR_PATH" brew install --build-from-source "$$TAP_NAME/gbox" \
-
-clean-tap: ## Clean up local tap directory
-	@echo "Cleaning up local tap directory..."
-	@TAP_DIR="$$(pwd)/../local-gbox"; \
-	if [ -d "$$TAP_DIR" ]; then \
-		brew untap "$$TAP_DIR" 2>/dev/null || true; \
-		rm -rf "$$TAP_DIR"; \
-		echo "Local tap directory cleaned up"; \
-	else \
-		echo "Local tap directory does not exist"; \
-	fi
 
 check-version:
 ifndef VERSION
