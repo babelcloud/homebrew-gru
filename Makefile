@@ -41,24 +41,17 @@ test-gbox: check-version ## Test gbox formula locally with specified version (us
 	@ARCH=$$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/'); \
 	OS=$$(uname -s | tr '[:upper:]' '[:lower:]'); \
 	TAR_PATH="$$(pwd)/../gbox/dist/gbox-$$OS-$$ARCH-$(VERSION).tar.gz"; \
-	echo "Using local tar: $$TAR_PATH"; \
 	if [ ! -f "$$TAR_PATH" ]; then \
 		echo "Error: $$TAR_PATH does not exist"; \
 		exit 1; \
 	fi; \
-	echo "Creating local tap directory for testing..."; \
 	TAP_NAME="gru/local-gbox"; \
 	TAP_DIR="$$(pwd)/../local-gbox"; \
 	brew untap "$$TAP_NAME" 2>/dev/null || true; \
 	rm -rf "$$TAP_DIR" 2>/dev/null || true; \
 	brew tap-new "$$TAP_NAME"; \
-	echo "Local Tap directory: $$TAP_DIR"; \
 	cp gbox.rb "/opt/homebrew/Library/Taps/gru/homebrew-local-gbox/Formula/"; \
-	echo "Formula copied to tap directory"; \
-	echo "Adding local tap..."; \
-	echo "Uninstalling existing gbox if present..."; \
 	brew uninstall gbox 2>/dev/null || true; \
-	echo "Installing gbox from local tap..."; \
 	env HOMEBREW_GBOX_VERSION=$(VERSION) HOMEBREW_GBOX_URL="file://$$TAR_PATH" brew install --build-from-source "$$TAP_NAME/gbox" \
 
 check-version:
