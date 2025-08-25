@@ -9,7 +9,7 @@ class Gbox < Formula
   homepage "https://github.com/babelcloud/gru-sandbox"
 
   # Version definition
-  GBOX_VERSION = "0.1.5"
+  GBOX_VERSION = "0.1.6"
   version ENV["HOMEBREW_GBOX_VERSION"] || GBOX_VERSION
 
   # Base URL for downloads
@@ -17,10 +17,10 @@ class Gbox < Formula
   url ENV["HOMEBREW_GBOX_URL"] || "#{base_url}/gbox-#{OS.mac? ? "darwin" : "linux"}-#{Hardware::CPU.arm? ? "arm64" : "amd64"}-#{version}.tar.gz"
 
   # SHA256 definitions for different architectures
-  DARWIN_ARM64_SHA256 = "e81e467abc1755026a4fa55a560fd4b273352407de83e975c204461a72dbf0cd"
-  DARWIN_AMD64_SHA256 = "cd0aedf2ef75ae644c0eb75b59b5c928782aeccc325625fd69796ee1dfec1aa2"
-  LINUX_ARM64_SHA256  = "4b3f7699a3bf00a3f20375de46a1917cdeaa5f8cb3dab6fc0d5f7247d1a1ad24"
-  LINUX_AMD64_SHA256  = "898e56fdc4fcedde57bea56dacb84cd8b0ef16598b7baf8e7b38671138084f44"
+  DARWIN_ARM64_SHA256 = "d332cbf437caf212a84be951897067c9abba0eda78d0adcc302fa74fbd5a83dc"
+  DARWIN_AMD64_SHA256 = "da2b98e0e844eea8eb231c5eb83d2f34e1648ac27eed630a1d34e69d76f7e912"
+  LINUX_ARM64_SHA256  = "f7e54148982719c244bbafdb821888b1982cd255460a4a1ebedbe68fd7af2044"
+  LINUX_AMD64_SHA256  = "05d0019b2b868cc5d2100f2005978733c1ce5bddc0fd2df743293293021ef1a5"
 
   def self.get_sha256(url)
     return default_sha256 unless ENV["HOMEBREW_GBOX_URL"]
