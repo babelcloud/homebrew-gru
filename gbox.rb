@@ -12,6 +12,9 @@ class Gbox < Formula
   GBOX_VERSION = "0.1.7"
   version ENV["HOMEBREW_GBOX_VERSION"] || GBOX_VERSION
 
+  depends_on "android-platform-tools"
+  depends_on "frpc"
+
   # Base URL for downloads
   base_url = "https://github.com/babelcloud/gru-sandbox/releases/download/v#{version}"
   url ENV["HOMEBREW_GBOX_URL"] || "#{base_url}/gbox-#{OS.mac? ? "darwin" : "linux"}-#{Hardware::CPU.arm? ? "arm64" : "amd64"}-#{version}.tar.gz"
