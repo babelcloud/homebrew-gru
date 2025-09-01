@@ -17,10 +17,10 @@ class Gbox < Formula
   url ENV["HOMEBREW_GBOX_URL"] || "#{base_url}/gbox-#{OS.mac? ? "darwin" : "linux"}-#{Hardware::CPU.arm? ? "arm64" : "amd64"}-#{version}.tar.gz"
 
   # SHA256 definitions for different architectures
-  DARWIN_ARM64_SHA256 = ""
-  DARWIN_AMD64_SHA256 = ""
-  LINUX_ARM64_SHA256  = ""
-  LINUX_AMD64_SHA256  = ""
+  DARWIN_ARM64_SHA256 = "68d9a7840d4719754599738f154f9261c35084b51e50408a08c483dcc77df71a"
+  DARWIN_AMD64_SHA256 = "1c85fdfecb65c419fcb4ae0e786a462ff48eccaf752aa94bcb5b21dc9579cba1"
+  LINUX_ARM64_SHA256  = "77175d2a5ecbc4080eff8261cf95fd2ae054373fa9b571dc1b95b51d882eb0ec"
+  LINUX_AMD64_SHA256  = "d0e164f560bd55e93046dae6122e40ca6ed2dcd86912c4049999760a6a57757b"
 
   def self.get_sha256(url)
     return default_sha256 unless ENV["HOMEBREW_GBOX_URL"]
