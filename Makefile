@@ -14,9 +14,17 @@ update-gbox: ## Update gbox.rb formula to latest version or specified version (u
 		bin/update-gbox.sh; \
 	fi
 
-test-gbox: ## Test gbox formula locally with latest version or specified version (usage: make test-gbox [VERSION=x.x.x])
+test-gbox: ## Test gbox formula locally with latest version or specified version (usage: make test-gbox [VERSION=x.x.x] [SKIP_CLEANUP=true])
 	@if [ -n "$(VERSION)" ]; then \
-		bin/test-gbox.sh -v $(VERSION); \
+		if [ "$(SKIP_CLEANUP)" = "true" ]; then \
+			bin/test-gbox.sh -v $(VERSION) -s; \
+		else \
+			bin/test-gbox.sh -v $(VERSION); \
+		fi; \
 	else \
-		bin/test-gbox.sh; \
+		if [ "$(SKIP_CLEANUP)" = "true" ]; then \
+			bin/test-gbox.sh -s; \
+		else \
+			bin/test-gbox.sh; \
+		fi; \
 	fi
