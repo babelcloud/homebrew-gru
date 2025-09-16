@@ -16,6 +16,7 @@ VERSION=""
 TAR_PATH=""
 TAP_ORG="gru"
 TAP_NAME="gbox-test"
+SKIP_CLEANUP=false
 
 # Help function
 show_help() {
@@ -27,11 +28,13 @@ Options:
     -p, --path PATH          Path to tar.gz file (auto-detected if not specified)
     -o, --org ORG            Tap organization (default: gru)
     -n, --name NAME          Tap name (default: gbox-test)
+    -s, --skip-cleanup       Skip cleanup step (keep gbox installed)
     -h, --help               Show this help message
 
 Examples:
     $0 -v 0.1.12                    # Test specific version
     $0 -v 0.1.12 -p /path/to/file  # Test with specific tar.gz file
+    $0 -v 0.1.12 -s                 # Test and keep gbox installed
     $0 --help                       # Show this help
 
 EOF
@@ -55,6 +58,10 @@ while [[ $# -gt 0 ]]; do
         -n|--name)
             TAP_NAME="$2"
             shift 2
+            ;;
+        -s|--skip-cleanup)
+            SKIP_CLEANUP=true
+            shift
             ;;
         -h|--help)
             show_help
@@ -104,7 +111,7 @@ auto_detect_tar_path() {
     
     # Try common paths
     local possible_paths=(
-        "../gbox/dist/gbox-$os-$arch-$VERSION.tar.gz"
+        "../../gbox/dist/gbox-$os-$arch-$VERSION.tar.gz"
         "./gbox-$os-$arch-$VERSION.tar.gz"
         "../dist/gbox-$os-$arch-$VERSION.tar.gz"
     )
@@ -153,7 +160,22 @@ setup_test_tap() {
     
     # Remove existing tap if it exists
     echo "Removing existing tap..."
-    brew untap "$TAP_ORG/$TAP_NAME" 2>/dev/null || true
+    if brew tap | grep -q "$TAP_ORG/$TAP_NAME"; then
+        echo "Found existing tap, removing it..."
+        brew untap "$TAP_ORG/$TAP_NAME" || {
+            echo -e "${YELLOW}Warning: Failed to untap, trying to force remove...${NC}"
+            # Force remove the tap directory
+            local tap_path="/opt/homebrew/Library/Taps/$TAP_ORG/homebrew-$TAP_NAME"
+            if [[ -d "$tap_path" ]]; then
+                rm -rf "$tap_path"
+            fi
+            # Also try Linux path
+            tap_path="$HOME/.linuxbrew/Library/Taps/$TAP_ORG/homebrew-$TAP_NAME"
+            if [[ -d "$tap_path" ]]; then
+                rm -rf "$tap_path"
+            fi
+        }
+    fi
     rm -rf "$tap_dir" 2>/dev/null || true
     
     # Create new tap
@@ -173,7 +195,7 @@ setup_test_tap() {
     fi
     
     echo "Copying gbox.rb to tap..."
-    cp gbox.rb "$tap_formula_path/"
+    cp ../gbox.rb "$tap_formula_path/"
     
     echo -e "${GREEN}Test tap setup completed${NC}"
 }
@@ -188,7 +210,14 @@ test_installation() {
     
     # Install from test tap
     echo "Installing gbox from test tap..."
-    env HOMEBREW_GBOX_VERSION="$VERSION" HOMEBREW_GBOX_URL="file://$TAR_PATH" \
+    # Convert relative path to absolute path
+    local abs_tar_path
+    if [[ "$TAR_PATH" = /* ]]; then
+        abs_tar_path="$TAR_PATH"
+    else
+        abs_tar_path="$(realpath "$TAR_PATH")"
+    fi
+    env HOMEBREW_GBOX_VERSION="$VERSION" HOMEBREW_GBOX_URL="file://$abs_tar_path" \
         brew install --build-from-source "$TAP_ORG/$TAP_NAME/gbox"
     
     # Test the installation
@@ -242,14 +271,22 @@ main() {
     # Test installation
     test_installation
     
-    # Cleanup
-    cleanup
-    
-    echo -e "${GREEN}Test completed successfully!${NC}"
+    # Cleanup (unless skipped)
+    if [[ "$SKIP_CLEANUP" == true ]]; then
+        echo -e "${GREEN}Test completed successfully!${NC}"
+        echo -e "${YELLOW}Note: Cleanup skipped - gbox is still installed${NC}"
+        echo -e "${YELLOW}To uninstall gbox later, run: brew uninstall gbox${NC}"
+    else
+        # Cleanup
+        cleanup
+        echo -e "${GREEN}Test completed successfully!${NC}"
+    fi
 }
 
-# Trap cleanup on exit
-trap cleanup EXIT
+# Trap cleanup on exit (unless skipped)
+if [[ "$SKIP_CLEANUP" != true ]]; then
+    trap cleanup EXIT
+fi
 
 # Run main function
 main "$@"
