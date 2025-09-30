@@ -8,14 +8,15 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Change to the directory where this script is located
-cd "$(dirname "${BASH_SOURCE[0]}")"
+# Change to the project root directory (parent of bin directory)
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 # Default values
 VERSION=""
 TAR_PATH=""
 TAP_ORG="gru"
 TAP_NAME="gbox-test"
+CLEANUP="true"
 
 # Help function
 show_help() {
@@ -27,6 +28,7 @@ Options:
     -p, --path PATH          Path to tar.gz file (auto-detected if not specified)
     -o, --org ORG            Tap organization (default: gru)
     -n, --name NAME          Tap name (default: gbox-test)
+    -k, --keep               Keep installed version (don't cleanup)
     -h, --help               Show this help message
 
 Examples:
@@ -55,6 +57,10 @@ while [[ $# -gt 0 ]]; do
         -n|--name)
             TAP_NAME="$2"
             shift 2
+            ;;
+        -k|--keep)
+            CLEANUP="false"
+            shift
             ;;
         -h|--help)
             show_help
@@ -106,7 +112,7 @@ auto_detect_tar_path() {
     local possible_paths=(
         "../gbox/dist/gbox-$os-$arch-$VERSION.tar.gz"
         "./gbox-$os-$arch-$VERSION.tar.gz"
-        "../dist/gbox-$os-$arch-$VERSION.tar.gz"
+        "./dist/gbox-$os-$arch-$VERSION.tar.gz"
     )
     
     for path in "${possible_paths[@]}"; do
@@ -175,6 +181,10 @@ setup_test_tap() {
     echo "Copying gbox.rb to tap..."
     cp gbox.rb "$tap_formula_path/"
     
+    # Reload tap to make formula available
+    echo "Reloading tap..."
+    brew tap "$TAP_ORG/$TAP_NAME"
+    
     echo -e "${GREEN}Test tap setup completed${NC}"
 }
 
@@ -228,6 +238,9 @@ main() {
         TAR_PATH=$(auto_detect_tar_path)
     fi
     
+    # Convert to absolute path for file:// URL
+    TAR_PATH=$(realpath "$TAR_PATH")
+    
     # Verify tar.gz file exists
     if [[ ! -f "$TAR_PATH" ]]; then
         echo -e "${RED}Error: Tar.gz file not found: $TAR_PATH${NC}"
@@ -242,14 +255,20 @@ main() {
     # Test installation
     test_installation
     
-    # Cleanup
-    cleanup
+    # Cleanup if requested
+    if [[ "$CLEANUP" == "true" ]]; then
+        cleanup
+    else
+        echo -e "${YELLOW}Keeping installed version (use --keep to skip cleanup)${NC}"
+    fi
     
     echo -e "${GREEN}Test completed successfully!${NC}"
 }
 
-# Trap cleanup on exit
-trap cleanup EXIT
+# Trap cleanup on exit (only if cleanup is enabled)
+if [[ "$CLEANUP" == "true" ]]; then
+    trap cleanup EXIT
+fi
 
 # Run main function
 main "$@"
