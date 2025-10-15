@@ -110,8 +110,15 @@ get_latest_version() {
     
     # Get latest version
     local latest_version
-    latest_version=$(gh release list --repo "$REPO" --limit 20 --json tagName,isDraft,isPrerelease \
-        --jq "$jq_filter" | head -1 | sed 's/v//')
+    local temp_output
+    temp_output=$(mktemp)
+    if gh release list --repo "$REPO" --limit 20 --json tagName,isDraft,isPrerelease --jq "$jq_filter" > "$temp_output" 2>/dev/null; then
+        latest_version=$(head -1 "$temp_output" | sed 's/v//')
+        rm -f "$temp_output"
+    else
+        rm -f "$temp_output"
+        latest_version=""
+    fi
     
     if [[ -z "$latest_version" ]]; then
         echo -e "${RED}Error: No valid releases found${NC}" >&2
