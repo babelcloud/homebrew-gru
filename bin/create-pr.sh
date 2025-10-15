@@ -8,6 +8,11 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Smart GitHub integration:
+# - If 'gh' CLI is available: Uses GitHub CLI (no token needed locally)
+# - If 'gh' CLI is not available: Uses GitHub API with GH_TOKEN (for CI environments)
+# Usage: GH_TOKEN=your_token ./create-pr.sh  # Force API mode
+
 # Change to the directory where this script is located
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
@@ -31,11 +36,19 @@ Options:
     -r, --base-branch BRANCH Base branch (default: main)
     -h, --help               Show this help message
 
+Environment Variables:
+    GH_TOKEN                 GitHub token for API access (only needed when gh CLI is not available)
+
+Behavior:
+    - If 'gh' CLI is available: Uses GitHub CLI for PR creation
+    - If 'gh' CLI is not available: Falls back to GitHub API (requires GH_TOKEN in CI)
+
 Examples:
     $0                                    # Auto-create PR with default settings
     $0 -m "Custom commit message"        # Custom commit message
     $0 -t "Custom PR title"              # Custom PR title
     $0 --body "Custom PR body"           # Custom PR body
+    GH_TOKEN=token $0                   # Force API mode with token (useful in CI)
 
 EOF
 }
@@ -181,12 +194,34 @@ This PR was automatically created by the GitHub Action workflow."
     fi
     
     echo -e "${YELLOW}Creating pull request...${NC}"
-    gh pr create \
-        --title "$title" \
-        --body "$body" \
-        --base "$BASE_BRANCH" \
-        --head "$branch_name" \
-        --repo "$(git remote get-url origin | sed 's/.*github.com[:/]\([^/]*\/[^/]*\)\.git/\1/')"
+    
+    # Get repository name for API calls
+    local repo_name
+    repo_name=$(git remote get-url origin | sed 's/.*github.com[:/]\([^/]*\/[^/]*\)\.git/\1/')
+    
+    if command -v gh >/dev/null 2>&1; then
+        # Use GitHub CLI if available
+        echo "Using GitHub CLI for PR creation..."
+        gh pr create \
+            --title "$title" \
+            --body "$body" \
+            --base "$BASE_BRANCH" \
+            --head "$branch_name" \
+            --repo "$repo_name"
+    else
+        # Fallback to GitHub API
+        echo "Using GitHub API for PR creation..."
+        curl -X POST \
+            -H "Authorization: token ${GH_TOKEN:-}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/$repo_name/pulls" \
+            -d '{
+                "title": "'"$title"'",
+                "body": "'"$body"'",
+                "base": "'"$BASE_BRANCH"'",
+                "head": "'"$branch_name"'"
+            }'
+    fi
     
     echo -e "${GREEN}Pull request created successfully!${NC}"
 }

@@ -8,6 +8,11 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Smart GitHub integration:
+# - If 'gh' CLI is available: Uses GitHub CLI (no token needed locally)
+# - If 'gh' CLI is not available: Uses GitHub API with GH_TOKEN (for CI environments)
+# Usage: GH_TOKEN=your_token ./update-gbox.sh  # Force API mode
+
 # Change to the directory where this script is located
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
@@ -26,10 +31,18 @@ Options:
     -r, --repo REPO          Repository (default: babelcloud/gbox)
     -h, --help               Show this help message
 
+Environment Variables:
+    GH_TOKEN                 GitHub token for API access (only needed when gh CLI is not available)
+
+Behavior:
+    - If 'gh' CLI is available: Uses GitHub CLI for release verification
+    - If 'gh' CLI is not available: Falls back to GitHub API (requires GH_TOKEN in CI)
+
 Examples:
     $0                        # Auto-detect latest version
     $0 -v 0.1.12            # Update to specific version
     $0 --version 0.1.12     # Update to specific version
+    GH_TOKEN=token $0       # Force API mode with token (useful in CI)
 
 EOF
 }
@@ -65,7 +78,8 @@ get_sha256() {
     local os="$1"
     local arch="$2"
     local version="$3"
-    local release_url="https://github.com/$REPO/releases/download/v$version"
+    local repo="$4"
+    local release_url="https://github.com/$repo/releases/download/v$version"
     
     echo "Getting SHA256 for $os-$arch..." >&2
     
@@ -131,21 +145,39 @@ update_formula() {
     
     echo -e "${YELLOW}Updating gbox.rb to version $version...${NC}"
     
-    # Verify release exists
+    # Verify release exists - use gh CLI if available, otherwise use API
     echo "Verifying release v$version exists..."
-    if ! gh release view "v$version" --repo "$repo" > /dev/null; then
-        echo -e "${RED}Error: Release v$version not found in $repo${NC}"
-        exit 1
+    
+    if command -v gh >/dev/null 2>&1; then
+        # Use GitHub CLI if available
+        echo "Using GitHub CLI for verification..."
+        if ! gh release view "v$version" --repo "$repo" >/dev/null 2>&1; then
+            echo -e "${RED}Error: Release v$version not found in $repo${NC}"
+            exit 1
+        fi
+    else
+        # Fallback to GitHub API
+        echo "Using GitHub API for verification..."
+        local release_response
+        release_response=$(curl -sfL -H "Authorization: token ${GH_TOKEN:-}" \
+            "https://api.github.com/repos/$repo/releases/tags/v$version" 2>/dev/null)
+        
+        if [[ $? -ne 0 ]] || [[ -z "$release_response" ]]; then
+            echo -e "${RED}Error: Release v$version not found in $repo${NC}"
+            exit 1
+        fi
     fi
+    
+    echo "Release v$version verified successfully"
     
     # Get SHA256 for each platform
     echo "Calculating SHA256 checksums..."
     local darwin_arm64_sha256 darwin_amd64_sha256 linux_arm64_sha256 linux_amd64_sha256
     
-    darwin_arm64_sha256=$(get_sha256 "darwin" "arm64" "$version")
-    darwin_amd64_sha256=$(get_sha256 "darwin" "amd64" "$version")
-    linux_arm64_sha256=$(get_sha256 "linux" "arm64" "$version")
-    linux_amd64_sha256=$(get_sha256 "linux" "amd64" "$version")
+    darwin_arm64_sha256=$(get_sha256 "darwin" "arm64" "$version" "$repo")
+    darwin_amd64_sha256=$(get_sha256 "darwin" "amd64" "$version" "$repo")
+    linux_arm64_sha256=$(get_sha256 "linux" "arm64" "$version" "$repo")
+    linux_amd64_sha256=$(get_sha256 "linux" "amd64" "$version" "$repo")
     
     # Update gbox.rb
     echo "Updating gbox.rb..."
