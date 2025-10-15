@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -euo pipefail
+set -euo pipefail -x
 
 # Colors for output
 RED='\033[0;31m'
