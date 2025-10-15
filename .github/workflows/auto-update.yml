@@ -18,6 +18,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      issues: write
 
     steps:
       - name: Checkout repository
@@ -26,29 +27,20 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
-      - name: Install required tools
-        run: |
-          # Install GitHub CLI
-          type -p curl >/dev/null || (sudo apt update && sudo apt install curl -y)
-          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-          sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-          sudo apt update
-          sudo apt install curl wget jq gh -y
-
       - name: Update Gbox formula
         run: |
-          # Authenticate with GitHub
-          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
-
           # Use the update script (it will auto-detect version and check if update is needed)
           if [ -n "${{ github.event.inputs.version }}" ]; then
             bin/update-gbox.sh -v "${{ github.event.inputs.version }}"
           else
             bin/update-gbox.sh
           fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
       - name: Create Pull Request
         run: |
           # Use the PR creation script
           bin/create-pr.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}

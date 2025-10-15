@@ -1,12 +1,15 @@
 #!/bin/bash
 
-set -euo pipefail
+set -euo pipefail -x
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+
+# Requires GitHub CLI (gh) to be installed and configured
+# In GitHub Actions, gh is available by default with GITHUB_TOKEN
 
 # Default values
 REPO="babelcloud/gbox"
@@ -79,6 +82,19 @@ get_latest_version() {
         exit 1
     fi
     
+    # Verify gh authentication
+    if [[ "$QUIET" == false ]]; then
+        echo "Verifying GitHub CLI authentication..."
+    fi
+    if ! gh auth status >/dev/null 2>&1; then
+        echo -e "${RED}Error: GitHub CLI is not authenticated${NC}" >&2
+        echo -e "${YELLOW}Please run: gh auth login${NC}" >&2
+        exit 1
+    fi
+    if [[ "$QUIET" == false ]]; then
+        echo -e "${GREEN}GitHub CLI authentication verified${NC}"
+    fi
+    
     # Build jq filter based on options
     local jq_filter=".[]"
     
@@ -94,8 +110,15 @@ get_latest_version() {
     
     # Get latest version
     local latest_version
-    latest_version=$(gh release list --repo "$REPO" --limit 20 --json tagName,isDraft,isPrerelease \
-        --jq "$jq_filter" | head -1 | sed 's/v//')
+    local temp_output
+    temp_output=$(mktemp)
+    if gh release list --repo "$REPO" --limit 20 --json tagName,isDraft,isPrerelease --jq "$jq_filter" > "$temp_output" 2>/dev/null; then
+        latest_version=$(head -1 "$temp_output" | sed 's/v//')
+        rm -f "$temp_output"
+    else
+        rm -f "$temp_output"
+        latest_version=""
+    fi
     
     if [[ -z "$latest_version" ]]; then
         echo -e "${RED}Error: No valid releases found${NC}" >&2
