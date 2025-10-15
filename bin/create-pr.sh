@@ -134,38 +134,18 @@ configure_git() {
     fi
 }
 
-# Function to create branch and commit
-create_branch_and_commit() {
+# Function to create pull request using gh
+create_pull_request() {
     local version="$1"
-    local branch_name="$BRANCH_PREFIX$version"
+    local title="$PR_TITLE"
+    local body="$PR_BODY"
     local commit_msg="$COMMIT_MESSAGE"
+    local branch_name="$BRANCH_PREFIX$version"
     
     # Use default commit message if not provided
     if [[ -z "$commit_msg" ]]; then
         commit_msg="Update Gbox to version $version"
     fi
-    
-    echo -e "${YELLOW}Creating branch: $branch_name${NC}"
-    git checkout -b "$branch_name"
-    
-    echo -e "${YELLOW}Adding changes...${NC}"
-    git add ../gbox.rb
-    
-    echo -e "${YELLOW}Committing changes...${NC}"
-    git commit -m "$commit_msg"
-    
-    echo -e "${YELLOW}Pushing branch...${NC}"
-    git push origin "$branch_name"
-    
-    echo "$branch_name"
-}
-
-# Function to create pull request
-create_pull_request() {
-    local branch_name="$1"
-    local version="$2"
-    local title="$PR_TITLE"
-    local body="$PR_BODY"
     
     # Use default title if not provided
     if [[ -z "$title" ]]; then
@@ -186,10 +166,6 @@ This PR was automatically created by the GitHub Action workflow."
     
     echo -e "${YELLOW}Creating pull request...${NC}"
     
-    # Get repository name
-    local repo_name
-    repo_name=$(git remote get-url origin | sed 's/.*github.com[:/]\([^/]*\/[^/]*\)\.git/\1/')
-    
     # Check if gh is available
     if ! command -v gh &> /dev/null; then
         echo -e "${RED}Error: GitHub CLI (gh) is not installed${NC}" >&2
@@ -205,13 +181,14 @@ This PR was automatically created by the GitHub Action workflow."
     fi
     echo -e "${GREEN}GitHub CLI authentication verified${NC}"
     
-    # Create PR using GitHub CLI
+    # Use gh to create PR with automatic branch creation and push
+    echo -e "${YELLOW}Creating branch and PR using gh...${NC}"
     gh pr create \
         --title "$title" \
         --body "$body" \
         --base "$BASE_BRANCH" \
         --head "$branch_name" \
-        --repo "$repo_name"
+        --draft=false
     
     echo -e "${GREEN}Pull request created successfully!${NC}"
 }
@@ -233,12 +210,8 @@ main() {
     # Configure git
     configure_git
     
-    # Create branch and commit
-    local branch_name
-    branch_name=$(create_branch_and_commit "$version")
-    
-    # Create pull request
-    create_pull_request "$branch_name" "$version"
+    # Create pull request directly using gh
+    create_pull_request "$version"
     
     echo -e "${GREEN}PR creation completed successfully!${NC}"
 }
