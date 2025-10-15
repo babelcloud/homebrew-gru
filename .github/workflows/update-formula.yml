@@ -1,0 +1,100 @@
+name: Update Gbox Formula
+
+on:
+    repository_dispatch:
+        types: [update-formula]
+    workflow_dispatch:
+        inputs:
+            version:
+                description: "Version to update to (e.g., 0.1.15)"
+                required: true
+                type: string
+
+jobs:
+    update-and-pr:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            pull-requests: write
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Extract version
+              id: version
+              run: |
+                  if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+                    VERSION="${{ github.event.inputs.version }}"
+                  else
+                    VERSION="${{ github.event.client_payload.version }}"
+                  fi
+                  echo "VERSION=$VERSION" >> $GITHUB_ENV
+                  echo "version=$VERSION" >> $GITHUB_OUTPUT
+                  echo "Updating to version: $VERSION"
+
+            - name: Setup GitHub CLI
+              run: |
+                  type -p gh >/dev/null || echo "gh CLI is already installed"
+
+            - name: Configure git
+              run: |
+                  git config --local user.email "gh_action@gbox.ai"
+                  git config --local user.name "GitHub Action"
+
+            - name: Update gbox formula
+              run: make update-gbox VERSION=${{ env.VERSION }}
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Check for changes
+              id: check_changes
+              run: |
+                  if git diff --quiet; then
+                    echo "has_changes=false" >> $GITHUB_OUTPUT
+                    echo "No changes detected"
+                  else
+                    echo "has_changes=true" >> $GITHUB_OUTPUT
+                    echo "Changes detected"
+                  fi
+
+            - name: Create Pull Request
+              if: steps.check_changes.outputs.has_changes == 'true'
+              run: |
+                  BRANCH_NAME="update-gbox-to-v${{ env.VERSION }}"
+
+                  # Create and switch to new branch
+                  git checkout -b "$BRANCH_NAME"
+
+                  # Add and commit changes
+                  git add gbox.rb
+                  git commit -m "Update Gbox to version ${{ env.VERSION }}"
+
+                  # Push branch
+                  git push origin "$BRANCH_NAME"
+
+                  # Create PR
+                  gh pr create \
+                    --title "Update Gbox to version ${{ env.VERSION }}" \
+                    --body "This PR automatically updates the Gbox formula to version ${{ env.VERSION }}.
+
+                  ## Changes
+                  - Updated GBOX_VERSION to ${{ env.VERSION }}
+                  - Updated SHA256 checksums for all platforms
+
+                  ## Auto-generated
+                  This PR was automatically created by the update-formula workflow.
+
+                  Triggered by: ${{ github.event_name }}
+                  " \
+                    --base main \
+                    --head "$BRANCH_NAME"
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: No changes needed
+              if: steps.check_changes.outputs.has_changes == 'false'
+              run: |
+                  echo "Formula is already up to date with version ${{ env.VERSION }}"
