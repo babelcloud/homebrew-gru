@@ -8,10 +8,8 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Smart GitHub integration:
-# - If 'gh' CLI is available: Uses GitHub CLI (no token needed locally)
-# - If 'gh' CLI is not available: Uses GitHub API with GH_TOKEN (for CI environments)
-# Usage: GH_TOKEN=your_token ./update-gbox.sh  # Force API mode
+# Requires GitHub CLI (gh) to be installed and configured
+# In GitHub Actions, gh is available by default with GITHUB_TOKEN
 
 # Change to the directory where this script is located
 cd "$(dirname "${BASH_SOURCE[0]}")"
@@ -31,18 +29,10 @@ Options:
     -r, --repo REPO          Repository (default: babelcloud/gbox)
     -h, --help               Show this help message
 
-Environment Variables:
-    GH_TOKEN                 GitHub token for API access (only needed when gh CLI is not available)
-
-Behavior:
-    - If 'gh' CLI is available: Uses GitHub CLI for release verification
-    - If 'gh' CLI is not available: Falls back to GitHub API (requires GH_TOKEN in CI)
-
 Examples:
     $0                        # Auto-detect latest version
     $0 -v 0.1.12            # Update to specific version
     $0 --version 0.1.12     # Update to specific version
-    GH_TOKEN=token $0       # Force API mode with token (useful in CI)
 
 EOF
 }
@@ -145,27 +135,27 @@ update_formula() {
     
     echo -e "${YELLOW}Updating gbox.rb to version $version...${NC}"
     
-    # Verify release exists - use gh CLI if available, otherwise use API
+    # Verify release exists
     echo "Verifying release v$version exists..."
     
-    if command -v gh >/dev/null 2>&1; then
-        # Use GitHub CLI if available
-        echo "Using GitHub CLI for verification..."
-        if ! gh release view "v$version" --repo "$repo" >/dev/null 2>&1; then
-            echo -e "${RED}Error: Release v$version not found in $repo${NC}"
-            exit 1
-        fi
-    else
-        # Fallback to GitHub API
-        echo "Using GitHub API for verification..."
-        local release_response
-        release_response=$(curl -sfL -H "Authorization: token ${GH_TOKEN:-}" \
-            "https://api.github.com/repos/$repo/releases/tags/v$version" 2>/dev/null)
-        
-        if [[ $? -ne 0 ]] || [[ -z "$release_response" ]]; then
-            echo -e "${RED}Error: Release v$version not found in $repo${NC}"
-            exit 1
-        fi
+    # Check if gh is available
+    if ! command -v gh &> /dev/null; then
+        echo -e "${RED}Error: GitHub CLI (gh) is not installed${NC}" >&2
+        exit 1
+    fi
+    
+    # Verify gh authentication
+    echo "Verifying GitHub CLI authentication..."
+    if ! gh auth status >/dev/null 2>&1; then
+        echo -e "${RED}Error: GitHub CLI is not authenticated${NC}" >&2
+        echo -e "${YELLOW}Please run: gh auth login${NC}" >&2
+        exit 1
+    fi
+    echo -e "${GREEN}GitHub CLI authentication verified${NC}"
+    
+    if ! gh release view "v$version" --repo "$repo" >/dev/null 2>&1; then
+        echo -e "${RED}Error: Release v$version not found in $repo${NC}"
+        exit 1
     fi
     
     echo "Release v$version verified successfully"
