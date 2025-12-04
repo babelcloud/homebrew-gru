@@ -181,14 +181,75 @@ This PR was automatically created by the GitHub Action workflow."
     fi
     echo -e "${GREEN}GitHub CLI authentication verified${NC}"
     
-    # Use gh to create PR with automatic branch creation and push
-    echo -e "${YELLOW}Creating branch and PR using gh...${NC}"
+    # Ensure we're on the base branch and up to date
+    echo -e "${YELLOW}Switching to base branch $BASE_BRANCH...${NC}"
+    git checkout "$BASE_BRANCH" || {
+        echo -e "${RED}Error: Failed to checkout base branch $BASE_BRANCH${NC}" >&2
+        exit 1
+    }
+    
+    # Pull latest changes (ignore errors if already up to date)
+    git pull origin "$BASE_BRANCH" || true
+    
+    # Check if branch already exists locally
+    if git show-ref --verify --quiet "refs/heads/$branch_name"; then
+        echo -e "${YELLOW}Branch $branch_name already exists locally, checking it out...${NC}"
+        git checkout "$branch_name"
+    else
+        # Create and checkout new branch
+        echo -e "${YELLOW}Creating branch $branch_name...${NC}"
+        git checkout -b "$branch_name"
+    fi
+    
+    # Stage all changes
+    echo -e "${YELLOW}Staging changes...${NC}"
+    git add -A
+    
+    # Check if there are changes to commit
+    if git diff --cached --quiet; then
+        echo -e "${YELLOW}No changes to commit${NC}"
+    else
+        # Commit changes
+        echo -e "${YELLOW}Committing changes...${NC}"
+        git commit -m "$commit_msg" || {
+            echo -e "${YELLOW}Commit may already exist, continuing...${NC}"
+        }
+    fi
+    
+    # Push branch to remote
+    echo -e "${YELLOW}Pushing branch to remote...${NC}"
+    if git push -u origin "$branch_name" 2>&1; then
+        echo -e "${GREEN}Branch pushed successfully${NC}"
+    else
+        # Check if branch exists on remote
+        if git ls-remote --heads origin "$branch_name" | grep -q "$branch_name"; then
+            echo -e "${YELLOW}Branch already exists on remote, force pushing...${NC}"
+            git push -f origin "$branch_name" || {
+                echo -e "${RED}Error: Failed to push branch${NC}" >&2
+                exit 1
+            }
+        else
+            echo -e "${RED}Error: Failed to push branch${NC}" >&2
+            exit 1
+        fi
+    fi
+    
+    # Use gh to create PR
+    echo -e "${YELLOW}Creating pull request using gh...${NC}"
     gh pr create \
         --title "$title" \
         --body "$body" \
         --base "$BASE_BRANCH" \
         --head "$branch_name" \
-        --draft=false
+        --draft=false || {
+        # Check if PR already exists
+        if gh pr view "$branch_name" --base "$BASE_BRANCH" >/dev/null 2>&1; then
+            echo -e "${GREEN}Pull request already exists for this branch${NC}"
+        else
+            echo -e "${RED}Failed to create pull request${NC}" >&2
+            exit 1
+        fi
+    }
     
     echo -e "${GREEN}Pull request created successfully!${NC}"
 }
